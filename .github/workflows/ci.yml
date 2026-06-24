@@ -39,3 +39,6 @@ jobs:
 
       - name: Run fallback_after_failure scenario
         run: python run_demo.py --scenario fallback_after_failure
+
+      - name: Run escalate_after_failure scenario
+        run: python run_demo.py --scenario escalate_after_failure
