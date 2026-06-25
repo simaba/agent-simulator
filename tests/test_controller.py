@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.controller import run_scenario
+from controller import run_scenario
 
 
 def test_normal_success_path() -> None:
