@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from src.agents import EvaluatorAgent, ExecutorAgent, PlannerAgent
-from src.evaluation import SimulationReport
-from src.scenarios import SCENARIOS
+from agents import EvaluatorAgent, ExecutorAgent, PlannerAgent
+from evaluation import SimulationReport
+from scenarios import SCENARIOS
 
 
 def run_scenario(name: str) -> SimulationReport:
@@ -32,10 +32,13 @@ def run_scenario(name: str) -> SimulationReport:
         attempts = attempt
         execution = executor.act(name, attempt)
         decision_log.append(
-            f"Executor attempt {attempt}: success={execution.success}, confidence={execution.confidence:.2f}"
+            f"Executor attempt {attempt}: success={execution.success}, "
+            f"confidence={execution.confidence:.2f}"
         )
         review = evaluator.act(execution)
-        decision_log.append(f"Evaluator decision: accepted={review.accepted}, reason={review.reason}")
+        decision_log.append(
+            f"Evaluator decision: accepted={review.accepted}, reason={review.reason}"
+        )
 
         if review.accepted:
             accepted = True

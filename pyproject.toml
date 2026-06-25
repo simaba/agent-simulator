@@ -29,8 +29,12 @@ classifiers = [
 ]
 dependencies = []
 
+[project.scripts]
+agent-simulator = "cli:main"
+
 [project.optional-dependencies]
 dev = [
+    "build>=1.0",
     "pytest>=8.0",
 ]
 
@@ -39,4 +43,5 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 
 [tool.setuptools]
-py-modules = []
+package-dir = {"" = "src"}
+py-modules = ["agents", "cli", "controller", "evaluation", "scenarios"]

@@ -31,14 +31,16 @@ jobs:
       - name: Run tests
         run: python -m pytest -q
 
-      - name: Run normal_success scenario
-        run: python run_demo.py --scenario normal_success
+      - name: Run installed CLI scenarios
+        run: |
+          agent-simulator --scenario normal_success
+          agent-simulator --scenario retry_then_success
+          agent-simulator --scenario fallback_after_failure
+          agent-simulator --scenario escalate_after_failure
 
-      - name: Run retry_then_success scenario
-        run: python run_demo.py --scenario retry_then_success
-
-      - name: Run fallback_after_failure scenario
-        run: python run_demo.py --scenario fallback_after_failure
-
-      - name: Run escalate_after_failure scenario
-        run: python run_demo.py --scenario escalate_after_failure
+      - name: Build and install wheel in a clean environment
+        run: |
+          python -m build
+          python -m venv /tmp/installed-simulator
+          /tmp/installed-simulator/bin/python -m pip install dist/*.whl
+          /tmp/installed-simulator/bin/agent-simulator --scenario normal_success
