@@ -29,4 +29,13 @@ SCENARIOS = {
         "cost_usd": 0.015,
         "consistency_note": "Stable once fallback is triggered, but quality is intentionally reduced.",
     },
+    "escalate_after_failure": {
+        "task": "Handle a high-impact request that repeatedly fails validation.",
+        "max_attempts": 2,
+        "use_fallback": False,
+        "fallback_output": "",
+        "latency_ms": 680,
+        "cost_usd": 0.016,
+        "consistency_note": "Human escalation is required when bounded recovery paths do not produce an acceptable result.",
+    },
 }

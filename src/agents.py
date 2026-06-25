@@ -36,6 +36,8 @@ class ExecutorAgent:
             return ExecutorResult(output="Improved result accepted after retry.", confidence=0.85, success=True)
         if scenario_name == "fallback_after_failure":
             return ExecutorResult(output="Primary path failed to produce an acceptable result.", confidence=0.31, success=False)
+        if scenario_name == "escalate_after_failure":
+            return ExecutorResult(output="High-impact primary path failed validation.", confidence=0.20, success=False)
         return ExecutorResult(output="Unknown scenario.", confidence=0.0, success=False)
 
 
