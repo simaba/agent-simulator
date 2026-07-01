@@ -53,12 +53,26 @@ flowchart TD
 
 ## Quick start
 
-Run the simulator directly:
+Python 3.10 or newer is required.
+
+### Run directly from a source checkout
+
+The simulator uses only the Python standard library at runtime. Clone the repository and run a scenario directly:
 
 ```bash
 git clone https://github.com/simaba/agent-simulator.git
 cd agent-simulator
 python run_demo.py --scenario normal_success
+```
+
+The `run_demo.py` wrapper adds the local `src/` directory automatically, so no manual `PYTHONPATH` setup is needed.
+
+### Install the CLI and run tests
+
+```bash
+python -m pip install -e ".[dev]"
+agent-simulator --scenario retry_then_success
+python -m pytest
 ```
 
 Available scenarios:
@@ -67,37 +81,31 @@ Available scenarios:
 python run_demo.py --scenario normal_success
 python run_demo.py --scenario retry_then_success
 python run_demo.py --scenario fallback_after_failure
+python run_demo.py --scenario escalate_after_failure
 ```
-
-Run tests:
-
-```bash
-python -m pip install -e ".[dev]"
-pytest
-```
-
-This repository currently uses only the Python standard library for runtime behavior. The optional dev dependency is only for tests.
 
 ## What each run produces
 
 - decision log with full agent interaction trace
-- retry and escalation events
+- retry, fallback, and escalation events
 - final outcome status
-- latency measurements
-- cost estimate
+- scenario-configured latency and cost estimates
 - evaluation summary metrics
+
+`correctness_proxy` is a simulator-state label derived from the configured scenario outcome. It is not a measured quality, safety, or model-performance metric.
 
 See `examples/sample-output.md` for a full example run.
 
 ## Repository structure
 
 ```text
-run_demo.py             # Entry point
+run_demo.py             # Self-contained checkout entry point
 src/
   agents.py             # Agent role implementations
   controller.py         # Orchestration and retry logic
   evaluation.py         # Evaluation report shape and rendering
   scenarios.py          # Scenario definitions
+  cli.py                # Installed CLI entry point
 tests/
   test_controller.py    # Scenario coverage tests
 examples/
