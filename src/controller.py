@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from agents import EvaluatorAgent, ExecutorAgent, PlannerAgent
+from agents import EvaluatorAgent, ExecutorAgent, ExecutorResult, PlannerAgent
 from evaluation import SimulationReport
 from scenarios import SCENARIOS
 
@@ -31,11 +31,15 @@ def run_scenario(name: str) -> SimulationReport:
     for attempt in range(1, scenario["max_attempts"] + 1):
         attempts = attempt
         execution = executor.act(name, attempt)
-        decision_log.append(
-            f"Executor attempt {attempt}: success={execution.success}, "
-            f"confidence={execution.confidence:.2f}"
+        evidence_summary = ", ".join(
+            f"{key}={value}" for key, value in sorted(execution.evidence.items())
         )
-        review = evaluator.act(execution)
+        decision_log.append(
+            f"Executor attempt {attempt}: evidence[{evidence_summary}], "
+            f"self_reported_confidence={execution.reported_confidence:.2f} "
+            "(recorded, not used as authorization)"
+        )
+        review = evaluator.act(execution, scenario["required_criteria"])
         decision_log.append(
             f"Evaluator decision: accepted={review.accepted}, reason={review.reason}"
         )
@@ -47,10 +51,31 @@ def run_scenario(name: str) -> SimulationReport:
 
         failed_attempts += 1
         if attempt >= scenario["max_attempts"]:
-            if scenario["use_fallback"]:
-                fallback_used = True
-                final_outcome = scenario["fallback_output"]
-                decision_log.append("Supervisor triggered fallback path.")
+            fallback_config = scenario.get("fallback")
+            if fallback_config:
+                fallback_execution = ExecutorResult(
+                    output=fallback_config["output"],
+                    evidence=dict(fallback_config["evidence"]),
+                    reported_confidence=0.0,
+                )
+                fallback_review = evaluator.act(
+                    fallback_execution,
+                    fallback_config["required_criteria"],
+                )
+                decision_log.append(
+                    "Supervisor evaluated fallback contract: "
+                    f"accepted={fallback_review.accepted}, reason={fallback_review.reason}"
+                )
+                if fallback_review.accepted:
+                    fallback_used = True
+                    final_outcome = fallback_execution.output
+                    decision_log.append("Supervisor triggered the validated fallback path.")
+                else:
+                    escalated = True
+                    final_outcome = "Escalated to human review."
+                    decision_log.append(
+                        "Fallback failed its own acceptance contract; supervisor escalated."
+                    )
             else:
                 escalated = True
                 final_outcome = "Escalated to human review."

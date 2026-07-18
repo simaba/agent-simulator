@@ -4,60 +4,70 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Last Commit](https://img.shields.io/github/last-commit/simaba/agent-simulator)](https://github.com/simaba/agent-simulator/commits/main)
 
-A small, runnable simulator for controlled multi-agent workflows, demonstrating governance, orchestration, and evaluation through working code rather than documentation alone.
+A small, runnable simulator for inspecting bounded retries, evidence-gated acceptance, fallback contracts, and human escalation through working code.
+
+## Why this repo exists
+
+Agent control patterns can sound rigorous in prose while still relying on vague confidence scores or unexamined fallback behavior in code. This simulator keeps the state transitions visible:
+
+- the planner produces a bounded plan;
+- the executor returns an output plus observable evidence fields;
+- the evaluator checks named acceptance criteria;
+- the supervisor accepts, retries, evaluates a separate fallback contract, or escalates;
+- the decision log records why each transition occurred.
+
+A self-reported confidence value is retained in the fixture to demonstrate a specific point: **confidence is diagnostic metadata, not authorization**. A high-confidence result can fail when required evidence is absent, and a lower-confidence result can pass when every observable criterion is demonstrated.
 
 ## Choose this repo when
 
-Use this repository when you want a **concrete executable example** of:
+Use this repository when you want a concrete executable example of:
 
-- bounded retries
-- fallback behavior
-- escalation logic
-- evaluator-driven acceptance
-- traceable decision logs
+- bounded retries;
+- explicit acceptance criteria;
+- fallback behavior with its own contract;
+- escalation when no authorized recovery path succeeds;
+- traceable decision logs.
 
-This repo is intentionally narrower than:
+Use the companion repositories for broader treatment:
 
-- [`multi-agent-governance`](https://github.com/simaba/multi-agent-governance), which defines the governance model
-- [`agent-orchestration`](https://github.com/simaba/agent-orchestration), which catalogs orchestration patterns
-- [`agent-eval`](https://github.com/simaba/agent-eval), which defines broader evaluation dimensions and scenarios
+- [`multi-agent-governance`](https://github.com/simaba/multi-agent-governance) — authority, containment, recovery, and accountability;
+- [`agent-orchestration`](https://github.com/simaba/agent-orchestration) — control-flow patterns and transition contracts;
+- [`agent-eval`](https://github.com/simaba/agent-eval) — evaluation validity, suite design, and decision semantics.
 
-## Why this exists
-
-Agent systems are easy to describe but hard to reason about without running them. This simulator gives you a concrete, inspectable implementation of the core control patterns: explicit roles, bounded retries, fallback paths, escalation triggers, and evaluation.
-
-The design principle is simple: a well-governed agent system should expose its control logic clearly enough to be debugged, tested, evaluated, and improved.
-
-## How it works
+## Control flow
 
 ```mermaid
 flowchart TD
-    P[Planner\nDecides how to handle the task] --> E
-    E[Executor\nPerforms the task action] --> Ev
-    Ev[Evaluator\nAssesses result quality] --> S
-    S{Supervisor\nDecide outcome}
-    S -->|Accept| Done[✓ Task complete]
-    S -->|Retry| E
-    S -->|Fallback| F[Fallback handler]
-    S -->|Escalate| Esc[Human escalation]
+    P[Planner\nCreates bounded plan] --> E
+    E[Executor\nReturns output + evidence] --> Ev
+    Ev[Evaluator\nChecks named criteria] --> S
+    S{Supervisor}
+    S -->|Criteria demonstrated| Done[Accept]
+    S -->|Attempts remain| E
+    S -->|Primary exhausted| FC[Evaluate fallback contract]
+    FC -->|Fallback criteria demonstrated| F[Use bounded fallback]
+    FC -->|No valid fallback| Esc[Human escalation]
 ```
 
-## Agents
+## Acceptance contracts
 
-| Agent | Role |
-|-------|------|
-| **Planner** | Determines the strategy for handling the task |
-| **Executor** | Performs the primary task action |
-| **Evaluator** | Assesses whether the result meets acceptance criteria |
-| **Supervisor** | Decides whether to accept, retry, fallback, or escalate |
+The primary scenarios currently require three observable fixture fields:
+
+| Criterion | Meaning in the simulator |
+|---|---|
+| `task_complete` | The scenario-defined task was completed rather than merely attempted |
+| `output_present` | A non-empty output exists for the next control |
+| `boundary_respected` | The scenario-defined action boundary was not crossed |
+
+The fallback path has a separate contract. It must demonstrate an output, boundary compliance, and that the fallback itself is bounded. A fallback is not automatically acceptable merely because the primary path failed.
+
+These booleans are deterministic simulator fixtures, not a claim that real agent quality can be reduced to three flags. In a real system, each criterion would need an operational definition, measurement instrument, version, provenance, and failure handling appropriate to the use case.
 
 ## Quick start
 
 Python 3.10 or newer is required.
 
 ### Run directly from a source checkout
-
-The simulator uses only the Python standard library at runtime. Clone the repository and run a scenario directly:
 
 ```bash
 git clone https://github.com/simaba/agent-simulator.git
@@ -86,43 +96,40 @@ python run_demo.py --scenario escalate_after_failure
 
 ## What each run produces
 
-- decision log with full agent interaction trace
-- retry, fallback, and escalation events
-- final outcome status
-- scenario-configured latency and cost estimates
-- evaluation summary metrics
+- the configured primary acceptance contract;
+- executor evidence for each attempt;
+- self-reported confidence, explicitly marked as non-authoritative;
+- evaluator reasons and failed criteria;
+- retry, fallback-contract, and escalation events;
+- final outcome state;
+- scenario-configured latency and cost fixture values.
 
-`correctness_proxy` is a simulator-state label derived from the configured scenario outcome. It is not a measured quality, safety, or model-performance metric.
+`correctness_proxy` remains a backward-compatible simulator-state label derived from the configured outcome. It is not measured correctness, safety, or model performance and should not be used to compare systems.
 
-See `examples/sample-output.md` for a full example run.
+See [`examples/sample-output.md`](examples/sample-output.md) for a full example run.
 
 ## Repository structure
 
 ```text
 run_demo.py             # Self-contained checkout entry point
 src/
-  agents.py             # Agent role implementations
-  controller.py         # Orchestration and retry logic
-  evaluation.py         # Evaluation report shape and rendering
-  scenarios.py          # Scenario definitions
+  agents.py             # Agent roles, evidence fixture, and evaluator
+  controller.py         # Orchestration, retry, fallback, and escalation logic
+  evaluation.py         # Simulation report shape and rendering
+  scenarios.py          # Scenario and acceptance-contract definitions
   cli.py                # Installed CLI entry point
 tests/
-  test_controller.py    # Scenario coverage tests
+  test_controller.py    # Path and evidence-gating tests
 examples/
   sample-output.md      # Example run output
 requirements.txt        # Runtime dependency note
 pyproject.toml          # Packaging and test configuration
 ```
 
-## Related repositories
+## Scope
 
-| Repository | What it adds |
-|---|---|
-| [multi-agent-governance](https://github.com/simaba/multi-agent-governance) | Governance model for multi-agent systems |
-| [agent-orchestration](https://github.com/simaba/agent-orchestration) | Broader orchestration pattern catalog |
-| [agent-eval](https://github.com/simaba/agent-eval) | Evaluation framework and scenario dimensions |
-| [lean-ai-ops](https://github.com/simaba/lean-ai-ops) | Another runnable repo that applies structured logic to a different domain |
+This is a deterministic teaching simulator, not an LLM benchmark, production orchestrator, safety system, or proof that the illustrated controls are sufficient for a real deployment. Its value is that the control logic is small enough to inspect and test.
 
 ---
 
-*Shared in a personal capacity. Open to collaborations and feedback via [LinkedIn](https://linkedin.com/in/simaba) or [Medium](https://medium.com/@bagheri.sima).*
+*Maintained by [Sima Bagheri](https://github.com/simaba).*

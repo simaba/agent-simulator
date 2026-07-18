@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -11,14 +11,15 @@ class PlannerResult:
 @dataclass
 class ExecutorResult:
     output: str
-    confidence: float
-    success: bool
+    evidence: dict[str, bool]
+    reported_confidence: float
 
 
 @dataclass
 class EvaluatorResult:
     accepted: bool
     reason: str
+    failed_criteria: list[str] = field(default_factory=list)
 
 
 class PlannerAgent:
@@ -29,22 +30,85 @@ class PlannerAgent:
 class ExecutorAgent:
     def act(self, scenario_name: str, attempt: int) -> ExecutorResult:
         if scenario_name == "normal_success":
-            return ExecutorResult(output="Completed successfully on first pass.", confidence=0.93, success=True)
+            return ExecutorResult(
+                output="Completed successfully on first pass.",
+                evidence={
+                    "task_complete": True,
+                    "output_present": True,
+                    "boundary_respected": True,
+                },
+                reported_confidence=0.93,
+            )
         if scenario_name == "retry_then_success":
             if attempt == 1:
-                return ExecutorResult(output="Initial result is incomplete.", confidence=0.49, success=False)
-            return ExecutorResult(output="Improved result accepted after retry.", confidence=0.85, success=True)
+                return ExecutorResult(
+                    output="Initial result is incomplete.",
+                    evidence={
+                        "task_complete": False,
+                        "output_present": True,
+                        "boundary_respected": True,
+                    },
+                    reported_confidence=0.91,
+                )
+            return ExecutorResult(
+                output="Improved result accepted after retry.",
+                evidence={
+                    "task_complete": True,
+                    "output_present": True,
+                    "boundary_respected": True,
+                },
+                reported_confidence=0.72,
+            )
         if scenario_name == "fallback_after_failure":
-            return ExecutorResult(output="Primary path failed to produce an acceptable result.", confidence=0.31, success=False)
+            return ExecutorResult(
+                output="Primary path failed to produce a complete result.",
+                evidence={
+                    "task_complete": False,
+                    "output_present": True,
+                    "boundary_respected": True,
+                },
+                reported_confidence=0.88,
+            )
         if scenario_name == "escalate_after_failure":
-            return ExecutorResult(output="High-impact primary path failed validation.", confidence=0.20, success=False)
-        return ExecutorResult(output="Unknown scenario.", confidence=0.0, success=False)
+            return ExecutorResult(
+                output="High-impact path could not demonstrate the required boundary control.",
+                evidence={
+                    "task_complete": False,
+                    "output_present": True,
+                    "boundary_respected": False,
+                },
+                reported_confidence=0.95,
+            )
+        return ExecutorResult(
+            output="Unknown scenario.",
+            evidence={
+                "task_complete": False,
+                "output_present": False,
+                "boundary_respected": False,
+            },
+            reported_confidence=0.0,
+        )
 
 
 class EvaluatorAgent:
-    def act(self, execution: ExecutorResult) -> EvaluatorResult:
-        if execution.success and execution.confidence >= 0.8:
-            return EvaluatorResult(accepted=True, reason="Output meets acceptance threshold.")
-        if execution.confidence < 0.5:
-            return EvaluatorResult(accepted=False, reason="Confidence below acceptance threshold.")
-        return EvaluatorResult(accepted=False, reason="Output not sufficiently reliable.")
+    def act(
+        self,
+        execution: ExecutorResult,
+        required_criteria: tuple[str, ...],
+    ) -> EvaluatorResult:
+        failed = [
+            criterion
+            for criterion in required_criteria
+            if execution.evidence.get(criterion) is not True
+        ]
+        if failed:
+            return EvaluatorResult(
+                accepted=False,
+                reason="Required observable criteria were not demonstrated: "
+                + ", ".join(failed),
+                failed_criteria=failed,
+            )
+        return EvaluatorResult(
+            accepted=True,
+            reason="All required observable criteria were demonstrated.",
+        )
